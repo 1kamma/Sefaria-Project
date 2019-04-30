@@ -44,7 +44,7 @@ class NoteSet(abst.AbstractMongoSet):
 
 
 def process_index_title_change_in_notes(indx, **kwargs):
-    print "Cascading Notes {} to {}".format(kwargs['old'], kwargs['new'])
+    print("Cascading Notes {} to {}".format(kwargs['old'], kwargs['new']))
     pattern = Ref(indx.title).regex()
     pattern = pattern.replace(re.escape(indx.title), re.escape(kwargs["old"]))
     notes = NoteSet({"ref": {"$regex": pattern}})

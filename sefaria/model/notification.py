@@ -82,7 +82,7 @@ class GlobalNotification(abst.AbstractMongoRecord):
             assert self.content.get("en"), "Please provide an English message."
             assert self.content.get("he"), "Please provide a Hebrew message."
         else:
-            raise InputError(u"Unknown type for GlobalNotification: {}".format(self.type))
+            raise InputError("Unknown type for GlobalNotification: {}".format(self.type))
 
     def _init_defaults(self):
         self.content = {}

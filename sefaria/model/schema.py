@@ -2,6 +2,7 @@
 import copy
 
 import logging
+from functools import reduce
 logger = logging.getLogger(__name__)
 
 try:
@@ -195,7 +196,7 @@ class AbstractTitledOrTermedObject(AbstractTitledObject):
             try:
                 self.title_group = term.title_group
             except AttributeError:
-                raise IndexError(u"Failed to load term named {}.".format(self.sharedTitle))
+                raise IndexError("Failed to load term named {}.".format(self.sharedTitle))
 
     def add_shared_term(self, term):
         self.sharedTitle = term
@@ -243,10 +244,10 @@ class Term(abst.AbstractMongoRecord, AbstractTitledObject):
         for title in self.get_titles():
             other_term = Term().load_by_title(title)
             if other_term and not self.same_record(other_term):
-                raise InputError(u"A Term with the title {} in it already exists".format(title))
+                raise InputError("A Term with the title {} in it already exists".format(title))
         self.title_group.validate()
         if self.name != self.get_primary_title():
-            raise InputError(u"Term name {} does not match primary title {}".format(self.name, self.get_primary_title()))
+            raise InputError("Term name {} does not match primary title {}".format(self.name, self.get_primary_title()))
 
     @staticmethod
     def normalize(term, lang="en"):
@@ -598,9 +599,9 @@ class TitledTreeNode(TreeNode, AbstractTitledOrTermedObject):
     A tree node that has a collection of titles - as contained in a TitleGroup instance.
     In this class, node titles, terms, 'default', and combined titles are handled.
     """
-    after_title_delimiter_re = ur"(?:[,.: \r\n]|(?:to))+"  # should be an arg?  \r\n are for html matches
-    after_address_delimiter_ref = ur"[,.: \r\n]+"
-    title_separators = [u", "]
+    after_title_delimiter_re = r"(?:[,.: \r\n]|(?:to))+"  # should be an arg?  \r\n are for html matches
+    after_address_delimiter_ref = r"[,.: \r\n]+"
+    title_separators = [", "]
 
     def __init__(self, serial=None, **kwargs):
         super(TitledTreeNode, self).__init__(serial, **kwargs)
@@ -621,7 +622,7 @@ class TitledTreeNode(TreeNode, AbstractTitledOrTermedObject):
         :param lang: "en" or "he"
         :return: list of strings - all possible titles within this subtree
         """
-        return self.title_dict(lang).keys()
+        return list(self.title_dict(lang).keys())
 
     def title_dict(self, lang="en", baselist=None):
         """
@@ -639,8 +640,8 @@ class TitledTreeNode(TreeNode, AbstractTitledOrTermedObject):
 
         this_node_titles = [title["text"] for title in self.get_titles_object() if title["lang"] == lang and title.get("presentation") != "alone"]
         if (not len(this_node_titles)) and (not self.is_default()):
-            error = u'No "{}" title found for schema node: "{}"'.format(lang, self.key)
-            error += u', child of "{}"'.format(self.parent.full_title("en")) if self.parent else ""
+            error = 'No "{}" title found for schema node: "{}"'.format(lang, self.key)
+            error += ', child of "{}"'.format(self.parent.full_title("en")) if self.parent else ""
             raise IndexSchemaError(error)
         if baselist:
             node_title_list = [baseName + sep + title for baseName in baselist for sep in self.title_separators for title in this_node_titles]
@@ -757,22 +758,22 @@ class TitledTreeNode(TreeNode, AbstractTitledOrTermedObject):
         super(TitledTreeNode, self).validate()
 
         if not self.default and not self.sharedTitle and not self.get_titles_object():
-            raise IndexSchemaError(u"Schema node {} must have titles, a shared title node, or be default".format(self))
+            raise IndexSchemaError("Schema node {} must have titles, a shared title node, or be default".format(self))
 
         if self.default and (self.get_titles_object() or self.sharedTitle):
-            raise IndexSchemaError(u"Schema node {} - default nodes can not have titles".format(self))
+            raise IndexSchemaError("Schema node {} - default nodes can not have titles".format(self))
 
         if not self.default:
             try:
                 self.title_group.validate()
             except InputError as e:
-                raise IndexSchemaError(u"Schema node {} has invalid titles: {}".format(self, e))
+                raise IndexSchemaError("Schema node {} has invalid titles: {}".format(self, e))
 
         if self.children and len([c for c in self.children if c.default]) > 1:
-            raise IndexSchemaError(u"Schema Structure Node {} has more than one default child.".format(self.key))
+            raise IndexSchemaError("Schema Structure Node {} has more than one default child.".format(self.key))
 
         if self.sharedTitle and Term().load({"name": self.sharedTitle}).titles != self.get_titles_object():
-            raise IndexSchemaError(u"Schema node {} with sharedTitle can not have explicit titles".format(self))
+            raise IndexSchemaError("Schema node {} with sharedTitle can not have explicit titles".format(self))
 
         #if not self.default and not self.primary_title("he"):
         #    raise IndexSchemaError("Schema node {} missing primary Hebrew title".format(self.key))
@@ -902,13 +903,13 @@ class NumberedTitledTreeNode(TitledTreeNode):
         """
         key = (title, lang, anchored, compiled, kwargs.get("for_js"), kwargs.get("match_range"), kwargs.get("strict"), kwargs.get("terminated"), kwargs.get("escape_titles"))
         if not self._regexes.get(key):
-            reg = ur"^" if anchored else u""
+            reg = r"^" if anchored else ""
             title_block = regex.escape(title) if escape_titles else title
-            reg += ur"(?P<title>" + title_block + ur")" if capture_title else title_block
+            reg += r"(?P<title>" + title_block + r")" if capture_title else title_block
             reg += self.after_title_delimiter_re
             addr_regex = self.address_regex(lang, **kwargs)
-            reg += ur'(?:(?:' + addr_regex + ur')|(?:[\[({]' + addr_regex + ur'[\])}]))'  # Match expressions with internal parenthesis around the address portion
-            reg += ur"(?=[.,:;?! })\]<]|$)" if kwargs.get("for_js") else ur"(?=\W|$)" if not kwargs.get("terminated") else ur"$"
+            reg += r'(?:(?:' + addr_regex + r')|(?:[\[({]' + addr_regex + r'[\])}]))'  # Match expressions with internal parenthesis around the address portion
+            reg += r"(?=[.,:;?! })\]<]|$)" if kwargs.get("for_js") else r"(?=\W|$)" if not kwargs.get("terminated") else r"$"
             self._regexes[key] = regex.compile(reg, regex.VERBOSE) if compiled else reg
         return self._regexes[key]
 
@@ -919,41 +920,41 @@ class NumberedTitledTreeNode(TitledTreeNode):
         if not self._addressTypes[0].stop_parsing(lang):
             for i in range(1, self.depth):
                 group = "a{}".format(i) if not kwargs.get("for_js") else None
-                reg += u"(" + self.after_address_delimiter_ref + self._addressTypes[i].regex(lang, group, **kwargs) + u")"
+                reg += "(" + self.after_address_delimiter_ref + self._addressTypes[i].regex(lang, group, **kwargs) + ")"
                 if not kwargs.get("strict", False):
-                    reg += u"?"
+                    reg += "?"
 
         if kwargs.get("match_range"):
             #TODO there is a potential error with this regex. it fills in toSections starting from highest depth and going to lowest.
             #TODO Really, the depths should be filled in the opposite order, but it's difficult to write a regex to match.
             #TODO However, most false positives will be filtered out in library._get_ref_from_match()
 
-            reg += ur"(?:\s*[-\u2010-\u2015\u05BE]\s*"  # maybe there's a dash (either n or m dash) and a range
-            reg += ur"(?=\S)"  # must be followed by something (Lookahead)
+            reg += r"(?:\s*[-\u2010-\u2015\u05BE]\s*"  # maybe there's a dash (either n or m dash) and a range
+            reg += r"(?=\S)"  # must be followed by something (Lookahead)
             group = "ar0" if not kwargs.get("for_js") else None
             reg += self._addressTypes[0].regex(lang, group, **kwargs)
             if not self._addressTypes[0].stop_parsing(lang):
-                reg += u"?"
+                reg += "?"
                 for i in range(1, self.depth):
-                    reg += ur"(?:(?:" + self.after_address_delimiter_ref + ur")?"
+                    reg += r"(?:(?:" + self.after_address_delimiter_ref + r")?"
                     group = "ar{}".format(i) if not kwargs.get("for_js") else None
-                    reg += u"(" + self._addressTypes[i].regex(lang, group, **kwargs) + u")"
+                    reg += "(" + self._addressTypes[i].regex(lang, group, **kwargs) + ")"
                     # assuming strict isn't relevant on ranges  # if not kwargs.get("strict", False):
-                    reg += u")?"
-            reg += ur")?"  # end range clause
+                    reg += ")?"
+            reg += r")?"  # end range clause
         return reg
 
     def sectionString(self, sections, lang="en", title=True, full_title=False):
         assert len(sections) <= self.depth
 
-        ret = u""
+        ret = ""
         if title:
             ret += self.full_title(lang) if full_title else self.primary_title(lang)
-            ret += u" "
+            ret += " "
         strs = []
         for i in range(len(sections)):
             strs.append(self.address_class(i).toStr(lang, sections[i]))
-        ret += u":".join(strs)
+        ret += ":".join(strs)
 
         return ret
 
@@ -968,7 +969,7 @@ class NumberedTitledTreeNode(TitledTreeNode):
     def serialize(self, **kwargs):
         d = super(NumberedTitledTreeNode, self).serialize(**kwargs)
         if kwargs.get("translate_sections"):
-                d["heSectionNames"] = map(hebrew_term, self.sectionNames)
+                d["heSectionNames"] = list(map(hebrew_term, self.sectionNames))
         return d
 
 
@@ -1169,7 +1170,7 @@ class SchemaNode(TitledTreeNode):
                 en_text_ja = text.TextChunk(self.ref(), "en").ja()
             else:
                 he_text_ja = en_text_ja = None
-            for key, struct in self.index.get_alt_structures().iteritems():
+            for key, struct in self.index.get_alt_structures().items():
                 res['alts'][key] = struct.serialize(expand_shared=True, expand_refs=True, he_text_ja=he_text_ja, en_text_ja=en_text_ja, expand_titles=True)
             del res['alt_structs']
         return res
@@ -1260,7 +1261,7 @@ class SchemaNode(TitledTreeNode):
 
         return traverse(self)
 
-    def text_index_map(self, tokenizer=lambda x: re.split(u'\s+',x), strict=True, lang='he', vtitle=None):
+    def text_index_map(self, tokenizer=lambda x: re.split('\s+',x), strict=True, lang='he', vtitle=None):
         """
         See TextChunk.text_index_map
         :param tokenizer:
@@ -1434,7 +1435,7 @@ class DictionaryEntryNode(TitledTreeNode):
         """
         if title and tref:
             self.title = title
-            self._ref_regex = regex.compile(u"^" + regex.escape(title) + u"[, _]*(\S[^0-9.]*)(?:[. ](\d+))?$")
+            self._ref_regex = regex.compile("^" + regex.escape(title) + "[, _]*(\S[^0-9.]*)(?:[. ](\d+))?$")
             self._match = self._ref_regex.match(tref)
             self.word = self._match.group(1) or ""
         elif word:
@@ -1498,7 +1499,7 @@ class DictionaryEntryNode(TitledTreeNode):
 
     def get_text(self):
         if not self.has_word_match:
-            return [u"No Entry for {}".format(self.word)]
+            return ["No Entry for {}".format(self.word)]
 
         return self.lexicon_entry.as_strings()
 
@@ -1561,7 +1562,7 @@ class DictionaryNode(VirtualNode):
         """
         super(DictionaryNode, self).__init__(serial, **kwargs)
 
-        from lexicon import LexiconEntrySubClassMapping, Lexicon
+        from .lexicon import LexiconEntrySubClassMapping, Lexicon
 
         self.lexicon = Lexicon().load({"name": self.lexiconName})
 
@@ -1609,11 +1610,11 @@ class DictionaryNode(VirtualNode):
     def get_child_order(self, child):
         if isinstance(child, DictionaryEntryNode):
             if hasattr(child.lexicon_entry, "rid"):
-                return unicode(child.lexicon_entry.rid)
+                return str(child.lexicon_entry.rid)
             else:
                 return child.word
         else:
-            return u""
+            return ""
 
 
 class SheetNode(NumberedTitledTreeNode):
@@ -1642,7 +1643,7 @@ class SheetNode(NumberedTitledTreeNode):
         self._sheetLibraryNode = sheet_library_node
         self.title_group = sheet_library_node.title_group
 
-        self._ref_regex = regex.compile(u"^" + regex.escape(title) + self.after_title_delimiter_re + u"([0-9]+)(?:" + self.after_address_delimiter_ref + u"([0-9]+)|$)")
+        self._ref_regex = regex.compile("^" + regex.escape(title) + self.after_title_delimiter_re + "([0-9]+)(?:" + self.after_address_delimiter_ref + "([0-9]+)|$)")
         self._match = self._ref_regex.match(tref)
         self.sheetId = int(self._match.group(1))
         if not self.sheetId:
@@ -1811,7 +1812,7 @@ class AddressType(object):
                 strict = kwargs.get("strict", False)
                 reg = self.section_patterns[lang]
                 if not strict:
-                    reg += u"?"
+                    reg += "?"
                 reg += self._core_regex(lang, group_id)
                 return reg
             else:
@@ -1833,9 +1834,9 @@ class AddressType(object):
         """
         Regular expression component to capture a number expressed in Hebrew letters
         :return string:
-        \p{Hebrew} ~= [\u05d0–\u05ea]
+        \p{Hebrew} ~= [\\u05d0–\\u05ea]
         """
-        return ur"""                                    # 1 of 3 styles:
+        return r"""                                    # 1 of 3 styles:
         ((?=[\u05d0-\u05ea]+(?:"|\u05f4|'')[\u05d0-\u05ea])    # (1: ") Lookahead:  At least one letter, followed by double-quote, two single quotes, or gershayim, followed by  one letter
                 \u05ea*(?:"|\u05f4|'')?				    # Many Tavs (400), maybe dbl quote
                 [\u05e7-\u05ea]?(?:"|\u05f4|'')?	    # One or zero kuf-tav (100-400), maybe dbl quote
@@ -1902,11 +1903,11 @@ class AddressDictionary(AddressType):
     # Important here is language of the dictionary, not of the text where the reference is.
     def _core_regex(self, lang, group_id=None):
         if group_id:
-            reg = ur"(?P<" + group_id + ur">"
+            reg = r"(?P<" + group_id + r">"
         else:
-            reg = ur"("
+            reg = r"("
 
-        reg += ur".+"
+        reg += r".+"
         return reg
 
     def toNumber(self, lang, s):
@@ -1923,19 +1924,19 @@ class AddressTalmud(AddressType):
     """
     section_patterns = {
         "en": None,
-        "he": ur"(\u05d3[\u05e3\u05e4\u05f3']\s+)"			# Daf, spelled with peh, peh sofit, geresh, or single quote
+        "he": r"(\u05d3[\u05e3\u05e4\u05f3']\s+)"			# Daf, spelled with peh, peh sofit, geresh, or single quote
     }
 
     def _core_regex(self, lang, group_id=None):
         if group_id:
-            reg = ur"(?P<" + group_id + ur">"
+            reg = r"(?P<" + group_id + r">"
         else:
-            reg = ur"("
+            reg = r"("
 
         if lang == "en":
-            reg += ur"\d+[abᵃᵇ]?)"
+            reg += r"\d+[abᵃᵇ]?)"
         elif lang == "he":
-            reg += self.hebrew_number_regex() + ur'''([.:]|[,\s]+(?:\u05e2(?:"|\u05f4|''))?[\u05d0\u05d1])?)'''
+            reg += self.hebrew_number_regex() + r'''([.:]|[,\s]+(?:\u05e2(?:"|\u05f4|''))?[\u05d0\u05d1])?)'''
 
         return reg
 
@@ -1947,32 +1948,32 @@ class AddressTalmud(AddressType):
     def toNumber(self, lang, s):
         if lang == "en":
             try:
-                if s[-1] in ["a", "b", u'ᵃ', u'ᵇ']:
+                if s[-1] in ["a", "b", 'ᵃ', 'ᵇ']:
                     amud = s[-1]
                     daf = int(s[:-1])
                 else:
                     amud = "a"
                     daf = int(s)
             except ValueError:
-                raise InputError(u"Couldn't parse Talmud reference: {}".format(s))
+                raise InputError("Couldn't parse Talmud reference: {}".format(s))
 
             if self.length and daf > self.length:
                 #todo: Catch this above and put the book name on it.  Proably change Exception type.
-                raise InputError(u"{} exceeds max of {} dafs.".format(daf, self.length))
+                raise InputError("{} exceeds max of {} dafs.".format(daf, self.length))
 
             indx = daf * 2
-            if amud == "a" or amud == u"ᵃ":
+            if amud == "a" or amud == "ᵃ":
                 indx -= 1
             return indx
         elif lang == "he":
             num = re.split("[.:,\s]", s)[0]
             daf = decode_hebrew_numeral(num) * 2
             if s[-1] == ":" or (
-                    s[-1] == u"\u05d1"    #bet
+                    s[-1] == "\u05d1"    #bet
                         and
                     ((len(s) > 2 and s[-2] in ", ")  # simple bet
-                     or (len(s) > 4 and s[-3] == u'\u05e2')  # ayin"bet
-                     or (len(s) > 5 and s[-4] == u"\u05e2")  # ayin''bet
+                     or (len(s) > 4 and s[-3] == '\u05e2')  # ayin"bet
+                     or (len(s) > 5 and s[-4] == "\u05e2")  # ayin''bet
                     )
             ):
                 return daf  # amud B
@@ -2001,9 +2002,9 @@ class AddressTalmud(AddressType):
             else:
                 punctuation = kwargs.get("punctuation", True)
                 if i > daf_num * 2:
-                    daf = ("%s " % encode_hebrew_numeral(daf_num, punctuation=punctuation)) + u"\u05D1"
+                    daf = ("%s " % encode_hebrew_numeral(daf_num, punctuation=punctuation)) + "\u05D1"
                 else:
-                    daf = ("%s " % encode_hebrew_numeral(daf_num, punctuation=punctuation)) + u"\u05D0"
+                    daf = ("%s " % encode_hebrew_numeral(daf_num, punctuation=punctuation)) + "\u05D0"
 
         return daf
 
@@ -2026,14 +2027,14 @@ class AddressInteger(AddressType):
     """
     def _core_regex(self, lang, group_id=None):
         if group_id:
-            reg = ur"(?P<" + group_id + ur">"
+            reg = r"(?P<" + group_id + r">"
         else:
-            reg = ur"("
+            reg = r"("
 
         if lang == "en":
-            reg += ur"\d+)"
+            reg += r"\d+)"
         elif lang == "he":
-            reg += self.hebrew_number_regex() + ur")"
+            reg += self.hebrew_number_regex() + r")"
 
         return reg
 
@@ -2065,8 +2066,8 @@ class AddressYear(AddressInteger):
 
 
 class AddressAliyah(AddressInteger):
-    en_map = [u"First", u"Second", u"Third", u"Fourth", u"Fifth", u"Sixth", u"Seventh"]
-    he_map = [u"ראשון", u"שני", u"שלישי", u"רביעי", u"חמישי", u"שישי", u"שביעי"]
+    en_map = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh"]
+    he_map = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שביעי"]
 
     @classmethod
     def toStr(cls, lang, i, **kwargs):
@@ -2078,8 +2079,8 @@ class AddressAliyah(AddressInteger):
 
 class AddressPerek(AddressInteger):
     section_patterns = {
-        "en": ur"""(?:(?:Chapter|chapter|Perek|perek|s\.|ch\.)?\s*)""",  # the internal ? is a hack to allow a non match, even if 'strict'
-        "he": ur"""(?:
+        "en": r"""(?:(?:Chapter|chapter|Perek|perek|s\.|ch\.)?\s*)""",  # the internal ? is a hack to allow a non match, even if 'strict'
+        "he": r"""(?:
             \u05e4(?:"|\u05f4|''|'\s)?                  # Peh (for 'perek') maybe followed by a quote of some sort
             |\u05e4\u05e8\u05e7(?:\u05d9\u05dd)?\s*                  # or 'perek(ym)' spelled out, followed by space
         )"""
@@ -2089,7 +2090,7 @@ class AddressPerek(AddressInteger):
 class AddressMishnah(AddressInteger):
     section_patterns = {
         "en": None,
-        "he": ur"""(?:
+        "he": r"""(?:
             (?:\u05de\u05e9\u05e0\u05d4\s)			# Mishna spelled out, with a space after
             |(?:\u05de(?:"|\u05f4|'')?)				# or Mem (for 'mishna') maybe followed by a quote of some sort
         )"""
@@ -2102,8 +2103,8 @@ class AddressVolume(AddressInteger):
     """
 
     section_patterns = {
-        "en": ur"""(?:(?:Volume|volume)?\s+)""",  #  the internal ? is a hack to allow a non match, even if 'strict'
-        "he": ur"""
+        "en": r"""(?:(?:Volume|volume)?\s+)""",  #  the internal ? is a hack to allow a non match, even if 'strict'
+        "he": r"""
         (?:
           (?:\u05d7(?:\u05dc\u05e7|'|\u05f3)\s+)  # Helek - spelled out or followed by a ' or a geresh - followed by space
          |(?:\u05d7["\u05f4])                     # chet followed by gershayim or double quote
@@ -2115,7 +2116,7 @@ class AddressVolume(AddressInteger):
 class AddressSiman(AddressInteger):
     section_patterns = {
         "en": None,
-        "he": ur"""(?:
+        "he": r"""(?:
             (?:\u05e1\u05d9\u05de\u05df\s+)			# Siman spelled out, with a space after
             |(?:\u05e1\u05d9(?:"|\u05f4|['\u05f3](?:['\u05f3]|\s+)))		# or Samech, Yued (for 'Siman') maybe followed by a quote of some sort
         )"""
@@ -2127,8 +2128,8 @@ class AddressHalakhah(AddressInteger):
     :class:`AddressType` for Halakhah/הלכה addresses
     """
     section_patterns = {
-        "en": ur"""(?:(?:Halakhah|halakhah)?\s*)""",  #  the internal ? is a hack to allow a non match, even if 'strict'
-        "he": ur"""(?:
+        "en": r"""(?:(?:Halakhah|halakhah)?\s*)""",  #  the internal ? is a hack to allow a non match, even if 'strict'
+        "he": r"""(?:
             (?:\u05d4\u05dc\u05db(?:\u05d4|\u05d5\u05ea)\s+)			# Halakhah spelled out, with a space after
             |(?:\u05d4\u05dc?(?:"|\u05f4|['\u05f3](?:['\u05f3]|\u05db|\s+)))		# or Haeh and possible Lamed(for 'halakhah') maybe followed by a quote of some sort
         )"""
@@ -2138,7 +2139,7 @@ class AddressHalakhah(AddressInteger):
 class AddressSeif(AddressInteger):
     section_patterns = {
         "en": None,
-        "he": ur"""(?:
+        "he": r"""(?:
             (?:\u05e1\u05e2\u05d9\u05e3\s+(?:\u05e7\u05d8\u05df)?)			# Seif spelled out, with a space after or Seif katan spelled out
             |(?:\u05e1(?:\u05e2|\u05e2\u05d9|\u05e7)?(?:"|\u05f4|['\u05f3](?:['\u05f3]|\s+)))|	# or trie of first three letters followed by a quote of some sort
         )"""

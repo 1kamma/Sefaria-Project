@@ -8,7 +8,7 @@ logging.basicConfig()
 logger = logging.getLogger("multiserver")
 logger.setLevel(logging.INFO)
 
-from messaging import MessagingNode
+from .messaging import MessagingNode
 from sefaria.system.varnish.thin_wrapper import invalidate_title
 
 
