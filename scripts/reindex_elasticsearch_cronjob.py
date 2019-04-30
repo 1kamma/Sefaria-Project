@@ -27,4 +27,4 @@ r = requests.post("http://web/admin/index-sheets-by-timestamp", data={"timestamp
 if "error" in r.text:
     raise Exception("Error when calling admin/index-sheets-by-timestamp API: " + r.text)
 else:
-    print "SUCCESS!", r.text
+    print("SUCCESS!", r.text)

@@ -4,18 +4,18 @@ django.setup()
 
 from sefaria.model.group import Group
 
-g = Group().load({"name": u"גיליונות נחמה"})
+g = Group().load({"name": "גיליונות נחמה"})
 
 g.toc = {
 	"categories": ["Tanakh", "Commentary"],
 	"title": "The Nechama Leibowitz Collection",
-	"heTitle": u"גיליונות נחמה",
+	"heTitle": "גיליונות נחמה",
 	"collectiveTitle": {
 		"en": "Nechama Leibowitz",
-		"he": u"נחמה ליבוביץ",
+		"he": "נחמה ליבוביץ",
 	},
 	"description": "<span class='dedication'>In loving memory of our mother, grandmother, and great-grandmother Miriam Magda Reichner<br>The Rubinstein family<br> Toronto, Canada and Raanana, Israel</span>",
-	"heDescription": u"<span class='dedication'>לעילוי נשמת אמנו, סבתנו, וסבתא רבתא שלנו מרים רייכנער<br>נדבת משפחת רובינשטיין<br>טורונטו, קנדה ורעננה, ישראל<span class='dedication'>"}
+	"heDescription": "<span class='dedication'>לעילוי נשמת אמנו, סבתנו, וסבתא רבתא שלנו מרים רייכנער<br>נדבת משפחת רובינשטיין<br>טורונטו, קנדה ורעננה, ישראל<span class='dedication'>"}
 
 g.save()
 
