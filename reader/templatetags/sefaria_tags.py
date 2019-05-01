@@ -7,7 +7,7 @@ import re
 import dateutil.parser
 import urllib
 import math
-from urlparse import urlparse
+from urllib.parse import urlparse
 from datetime import datetime
 from django import template
 from django.template.defaultfilters import stringfilter

@@ -4,13 +4,11 @@
 from datetime import datetime, timedelta, date
 from elasticsearch_dsl import Search
 from elasticsearch import Elasticsearch
-from sets import Set
 from random import choice
 from pprint import pprint
 import json
-import urlparse
-import urllib2
-import urllib
+from urllib.parse import urlencode, unquote
+from urllib.request import urlopen
 import dateutil.parser
 import base64
 import zlib
@@ -139,11 +137,11 @@ def render_react_component(component, props):
     cache_key = "todo" # zlib.compress(propsJSON)
     url = NODE_HOST + "/" + component + "/" + cache_key
 
-    encoded_args = urllib.urlencode({
+    encoded_args = urlencode({
         "propsJSON": propsJSON,
     })
     try:
-        response = urllib2.urlopen(url, encoded_args, NODE_TIMEOUT)
+        response = urlopen(url, encoded_args, NODE_TIMEOUT)
         html = response.read()
         return html
     except Exception as e:
@@ -566,18 +564,18 @@ def get_param(param, i=None):
 
 def get_search_params(get_dict, i=None):
     gp = get_param
-    sheet_group_search_filters = map(lambda f: urllib.unquote(f),
+    sheet_group_search_filters = map(lambda f: unquote(f),
                                      get_dict.get(gp("sgroupFilters", i)).split("|")) if get_dict.get(gp("sgroupFilters", i),
                                                                                                      "") else []
-    sheet_tags_search_filters = map(lambda f: urllib.unquote(f),
+    sheet_tags_search_filters = map(lambda f: unquote(f),
                                     get_dict.get(gp("stagsFilters", i), "").split("|")) if get_dict.get(gp("stagsFilters", i),
                                                                                                        "") else []
     sheet_agg_types = ['group'] * len(sheet_group_search_filters) + ['tags'] * len(
         sheet_tags_search_filters)  # i got a tingly feeling writing this
-    text_filters = map(lambda f: urllib.unquote(f), get_dict.get(gp("tpathFilters", i)).split("|")) if get_dict.get(gp("tpathFilters", i)) else []
+    text_filters = map(lambda f: unquote(f), get_dict.get(gp("tpathFilters", i)).split("|")) if get_dict.get(gp("tpathFilters", i)) else []
     return {
-        "query": urllib.unquote(get_dict.get(gp("q", i), "")),
-        "tab": urllib.unquote(get_dict.get(gp("tab", i), "text")),
+        "query": unquote(get_dict.get(gp("q", i), "")),
+        "tab": unquote(get_dict.get(gp("tab", i), "text")),
         "textField": ("naive_lemmatizer" if get_dict.get(gp("tvar", i)) == "1" else "exact") if get_dict.get(gp("tvar", i)) else "",
         "textSort": get_dict.get(gp("tsort", i), None),
         "textFilters": text_filters,
@@ -2562,7 +2560,7 @@ def texts_history_api(request, tref, lang=None, version=None):
         query = {"ref": {"$regex": refRe }}
     history = db.history.find(query)
 
-    summary = {"copiers": Set(), "translators": Set(), "editors": Set(), "reviewers": Set() }
+    summary = {"copiers": set(), "translators": set(), "editors": set(), "reviewers": set() }
     updated = history[0]["date"].isoformat() if history.count() else "Unknown"
 
     for act in history:
@@ -2744,7 +2742,7 @@ def user_activity(request, slug, page=1):
 
     try:
         profile = UserProfile(slug=slug)
-    except Exception, e:
+    except Exception as e:
         raise Http404
 
 
@@ -2851,7 +2849,7 @@ def user_profile(request, username, page=1):
     """
     try:
         profile    = UserProfile(slug=username)
-    except Exception, e:
+    except Exception as e:
         # Couldn't find by slug, try looking up by username (old style urls)
         # If found, redirect to new URL
         # If we no longer want to support the old URLs, we can remove this
@@ -3019,10 +3017,9 @@ def profile_get_user_history(request):
     :tref: Ref associated with history item
     """
     if not request.user.is_authenticated:
-        import urlparse
-        recents = json.loads(urlparse.unquote(request.COOKIES.get("recentlyViewed", '[]')))  # for backwards compat
+        recents = json.loads(unquote(request.COOKIES.get("recentlyViewed", '[]')))  # for backwards compat
         recents = UserProfile.transformOldRecents(None, recents)
-        history = json.loads(urlparse.unquote(request.COOKIES.get("user_history", '[]')))
+        history = json.loads(unquote(request.COOKIES.get("user_history", '[]')))
         return jsonResponse(history + recents)
     if request.method == "GET":
         saved, secondary, last_place, oref = get_url_params_user_history(request)

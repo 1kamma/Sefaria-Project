@@ -5,7 +5,7 @@ pymongo
 py2-py3-django-email-as-username
 diff_match_patch
 dateutils
-BeautifulSoup
+beautifulsoup4
 bleach==1.4.2
 rauth
 elasticsearch
